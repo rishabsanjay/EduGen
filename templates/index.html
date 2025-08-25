@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>EduGen — AI Study Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+      :root { color-scheme: light dark; }
+      body { font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
+
+      /* Aurora backdrop */
+      .bg-aurora::before{
+        content:"";
+        position:fixed; inset:-15% -10% auto -10%;
+        height:72vh; z-index:-1; filter: blur(42px);
+        background:
+          radial-gradient(40% 40% at 15% 20%, rgba(56,189,248,.35), transparent 60%),
+          radial-gradient(35% 35% at 85% 18%, rgba(94,234,212,.35), transparent 60%),
+          radial-gradient(50% 50% at 50% 82%, rgba(168,85,247,.25), transparent 60%);
+        animation: float 22s ease-in-out infinite alternate;
+      }
+      @keyframes float { from { transform: translateY(-2%);} to { transform: translateY(2%);} }
+
+      /* Big rounded card + little “foot” */
+      .quiz-card{
+        position:relative; border-radius:28px;
+        background: rgba(17,24,39,.88); /* slate-900 w/ translucency */
+        border: 1px solid rgba(255,255,255,.12);
+        box-shadow: 0 30px 70px rgba(0,0,0,.45);
+      }
+      .quiz-card::after{
+        content:""; position:absolute; left:50%; transform:translateX(-50%);
+        bottom:-14px; width:40%; height:14px; border-radius:9999px;
+        background: radial-gradient(60% 100% at 50% 0%, rgba(0,0,0,.45), transparent 70%);
+        filter: blur(2px);
+      }
+
+      /* Choice rows */
+      .choice-row{
+        width:100%; display:flex; align-items:center; gap:12px;
+        text-align:left; padding:12px 16px; border-radius:16px;
+        background: rgba(255,255,255,.05);
+        border:1px solid rgba(255,255,255,.12);
+        transition: transform .12s ease, background-color .12s ease, border-color .12s ease, box-shadow .12s ease;
+      }
+      .choice-row:hover{ background: rgba(255,255,255,.08); }
+      .choice-row.selected{ outline:2px solid rgba(56,189,248,.6); background: rgba(255,255,255,.08); }
+      .choice-row.correct{
+        border-color: rgba(34,197,94,.55);
+        background: rgba(34,197,94,.13);
+        box-shadow: 0 0 0 2px rgba(34,197,94,.45) inset;
+        animation: pop .22s ease-out;
+      }
+      .choice-row.incorrect{
+        border-color: rgba(239,68,68,.55);
+        background: rgba(239,68,68,.12);
+        animation: shake .28s ease-in-out;
+      }
+      .badge{
+        display:inline-flex; align-items:center; justify-content:center;
+        height:32px; width:32px; border-radius:9999px;
+        border:1px solid rgba(255,255,255,.15);
+        background: rgba(255,255,255,.08);
+        font-weight:600; font-size:.9rem;
+      }
+
+      @keyframes pop { from { transform: scale(.98);} to { transform: scale(1);} }
+      @keyframes shake {
+        10%, 90% { transform: translateX(-1px); }
+        20%, 80% { transform: translateX(2px); }
+        30%, 50%, 70% { transform: translateX(-3px); }
+        40%, 60% { transform: translateX(3px); }
+      }
+
+      /* Glass blocks for header/form */
+      .glass{ backdrop-filter: blur(10px); background: rgba(17,24,39,.55); }
+      .ring1{ border:1px solid rgba(255,255,255,.10); }
+
+      /* Flip helpers for flashcards */
+      .flip { transform-style: preserve-3d; transition: transform .5s; }
+      .flipped { transform: rotateY(180deg); }
+      .face { backface-visibility: hidden; }
+      .back { transform: rotateY(180deg); }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-950 text-slate-100 bg-aurora">
+    <div class="max-w-6xl mx-auto px-4 py-10">
+      <!-- Header -->
+      <header class="mb-10 flex items-center justify-between">
+        <h1 class="text-3xl md:text-4xl font-bold tracking-tight">
+          <span class="inline-block bg-gradient-to-r from-sky-300 to-teal-200 bg-clip-text text-transparent">EduGen</span>
+          <span class="ml-2 text-slate-300">AI Study Builder</span>
+        </h1>
+        <a href="https://github.com/" target="_blank" class="text-sm text-slate-400 hover:text-slate-200">GitHub</a>
+      </header>
+
+      <!-- Form -->
+      <section class="glass ring1 rounded-3xl shadow-2xl p-6 md:p-8">
+        <form id="gen-form" class="grid gap-4 md:grid-cols-5">
+          <div class="md:col-span-3">
+            <label for="topic" class="block text-sm mb-1 text-slate-300">Topic</label>
+            <input id="topic" name="topic" type="text" placeholder="e.g., The California Gold Rush" required
+              class="w-full rounded-2xl bg-white/5 ring1 px-4 py-3 outline-none focus:ring-2 focus:ring-sky-400" />
+          </div>
+          <div class="md:col-span-1">
+            <label for="type" class="block text-sm mb-1 text-slate-300">Content Type</label>
+            <select id="type" name="type" class="w-full rounded-2xl bg-white/5 ring1 px-3 py-3 focus:ring-2 focus:ring-sky-400">
+              <option value="flashcards">Flashcards</option>
+              <option value="quiz" selected>Quiz</option>
+              <option value="study_guide">Study Guide</option>
+              <option value="outline">Essay Outline</option>
+            </select>
+          </div>
+          <div class="md:col-span-1 flex items-end">
+            <button id="submit" type="submit"
+              class="w-full rounded-2xl bg-gradient-to-r from-sky-500 to-teal-400 text-slate-950 font-semibold py-3 hover:opacity-95 focus:outline-none">
+              Generate
+            </button>
+          </div>
+        </form>
+        <p id="status" class="mt-3 text-sm text-slate-400 hidden"></p>
+      </section>
+
+      <!-- Output -->
+      <section id="output" class="mt-10"></section>
+    </div>
+
+    <!-- Loader -->
+    <template id="loader">
+      <div class="animate-pulse glass ring1 rounded-3xl h-56 w-full shadow-2xl"></div>
+    </template>
+
+    <script type="module">
+      const form = document.getElementById('gen-form');
+      const output = document.getElementById('output');
+      const statusEl = document.getElementById('status');
+      const loaderTpl = document.getElementById('loader');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const topic = document.getElementById('topic').value.trim();
+        const contentType = document.getElementById('type').value;
+
+        output.innerHTML = '';
+        output.append(loaderTpl.content.cloneNode(true));
+        statusEl.classList.remove('hidden');
+        statusEl.textContent = 'Generating...';
+
+        try {
+          const res = await fetch('/api/generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic, contentType })
+          });
+          const data = await res.json();
+          output.innerHTML = '';
+
+          if (!res.ok) throw new Error(data.error || 'Unknown error');
+
+          if (data.quiz) renderQuiz(data.quiz);
+          else if (data.flashcards) renderFlashcards(data.flashcards);
+          else if (data.study_guide) renderStudyGuide(data.study_guide);
+          else if (data.outline) renderOutline(data.outline);
+
+          statusEl.textContent = 'Done';
+          setTimeout(() => statusEl.classList.add('hidden'), 900);
+        } catch (err) {
+          output.innerHTML = '';
+          statusEl.textContent = '';
+          statusEl.classList.add('hidden');
+          renderError(err.message);
+        }
+      });
+
+      function renderError(msg) {
+        const wrap = document.createElement('div');
+        wrap.className = 'mx-auto max-w-3xl';
+        wrap.innerHTML = `
+          <div class="glass ring1 rounded-3xl p-6 md:p-8 shadow-2xl">
+            <h2 class="text-xl font-semibold mb-2 text-red-300">Error</h2>
+            <p class="text-red-200">${escapeHtml(msg)}</p>
+          </div>`;
+        output.appendChild(wrap);
+      }
+
+      // ===== QUIZ (exact look + animations + keyboard) =====
+      function renderQuiz(questions) {
+        let idx = 0;
+        const selections = new Array(questions.length).fill(null);
+        const wrap = document.createElement('div');
+        wrap.className = 'mx-auto max-w-3xl';
+        output.appendChild(wrap);
+
+        const letters = ['A','B','C','D'];
+
+        function draw() {
+          const q = questions[idx];
+          wrap.innerHTML = `
+            <div class="quiz-card p-6 md:p-9">
+              <p class="text-sm text-slate-300 mb-3">Question ${idx+1} of ${questions.length}</p>
+              <h2 class="text-[1.9rem] md:text-[2.2rem] leading-snug font-semibold mb-6">${escapeHtml(q.question)}</h2>
+              <div id="choices" class="space-y-3"></div>
+              <div class="mt-7 flex items-center justify-between">
+                <button id="prev" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2">Prev</button>
+                <div id="feedback" class="text-sm text-slate-400"></div>
+                <button id="next" class="rounded-xl bg-sky-500/90 text-slate-950 font-semibold px-4 py-2 hover:opacity-90">
+                  ${idx === questions.length-1 ? 'Finish' : 'Next'}
+                </button>
+              </div>
+            </div>
+          `;
+
+          // render options
+          const list = wrap.querySelector('#choices');
+          q.choices.forEach((ch, ci) => {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'choice-row';
+            btn.innerHTML = `
+              <span class="badge">${letters[ci]}</span>
+              <span class="text-base md:text-lg">${escapeHtml(ch)}</span>
+            `;
+            btn.dataset.index = ci;
+            list.appendChild(btn);
+          });
+
+          const prev = wrap.querySelector('#prev');
+          const next = wrap.querySelector('#next');
+          const feedback = wrap.querySelector('#feedback');
+          const choiceEls = Array.from(list.querySelectorAll('.choice-row'));
+
+          // restore selection if any
+          if (selections[idx] !== null) {
+            applyFeedback(choiceEls, selections[idx], q.answer_index, feedback);
+          }
+
+          choiceEls.forEach(el => {
+            el.addEventListener('click', () => {
+              const pick = Number(el.dataset.index);
+              selections[idx] = pick;
+              applyFeedback(choiceEls, pick, q.answer_index, feedback);
+            });
+          });
+
+          prev.onclick = () => { if (idx>0){ idx--; draw(); } };
+          next.onclick = () => {
+            if (selections[idx] === null) { feedback.textContent = 'Pick an answer to continue'; return; }
+            if (idx < questions.length - 1) { idx++; draw(); }
+            else { showScore(); }
+          };
+
+          // keyboard: A-D pick, arrows nav, Enter next
+          window.onkeydown = (ev) => {
+            const k = ev.key.toLowerCase();
+            if (['a','b','c','d'].includes(k)) {
+              const map = {a:0,b:1,c:2,d:3}; const i = map[k];
+              if (choiceEls[i]) choiceEls[i].click();
+            } else if (ev.key === 'ArrowLeft') {
+              prev.click();
+            } else if (ev.key === 'ArrowRight' || ev.key === 'Enter') {
+              next.click();
+            }
+          };
+        }
+
+        function applyFeedback(choiceEls, pick, answerIdx, feedbackEl){
+          // clear classes
+          choiceEls.forEach(el => el.classList.remove('selected','correct','incorrect'));
+          // mark pick
+          const pickedEl = choiceEls[pick];
+          pickedEl.classList.add('selected');
+          // correctness
+          if (pick === answerIdx) {
+            pickedEl.classList.remove('selected');
+            pickedEl.classList.add('correct');
+            feedbackEl.textContent = 'Nice! That’s correct.';
+          } else {
+            pickedEl.classList.add('incorrect');
+            choiceEls[answerIdx]?.classList.add('correct');
+            feedbackEl.textContent = 'Not quite — correct answer highlighted.';
+          }
+        }
+
+        function showScore(){
+          const score = selections.reduce((acc, pick, i) => acc + (pick === questions[i].answer_index ? 1 : 0), 0);
+          const pct = Math.round((score / questions.length) * 100);
+          wrap.innerHTML = `
+            <div class="quiz-card p-8 md:p-10 text-center">
+              <h2 class="text-3xl font-semibold">Quiz complete</h2>
+              <p class="mt-3 text-slate-300 text-lg">Score: <span class="font-bold text-white">${score}</span> / ${questions.length} (${pct}%)</p>
+              <div class="mt-6 flex justify-center gap-3">
+                <button id="retry" class="rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 px-4 py-2">Retry</button>
+                <button id="back" class="rounded-xl bg-sky-500/90 text-slate-950 font-semibold px-4 py-2 hover:opacity-90">Back to form</button>
+              </div>
+            </div>
+          `;
+          wrap.querySelector('#retry').onclick = () => { idx = 0; selections.fill(null); draw(); };
+          wrap.querySelector('#back').onclick = () => { output.innerHTML = ''; window.scrollTo({top:0, behavior:'smooth'}); };
+          window.onkeydown = null;
+        }
+
+        draw();
+      }
+
+      // ===== FLASHCARDS =====
+      function renderFlashcards(cards) {
+        const grid = document.createElement('div');
+        grid.className = 'grid md:grid-cols-2 gap-5 mx-auto max-w-5xl';
+        cards.forEach((c) => {
+          const card = document.createElement('div');
+          card.className = 'relative h-48 glass ring1 rounded-[28px] p-5 cursor-pointer flip shadow-2xl';
+          card.innerHTML = `
+            <div class="absolute inset-0 face flex items-center justify-center text-center text-lg md:text-xl px-4">${escapeHtml(c.front)}</div>
+            <div class="absolute inset-0 back face flex items-center justify-center text-center text-base md:text-lg px-4 text-slate-200">${escapeHtml(c.back)}</div>`;
+          card.addEventListener('click', () => card.classList.toggle('flipped'));
+          grid.appendChild(card);
+        });
+        output.appendChild(grid);
+      }
+
+      // ===== STUDY GUIDE =====
+      function renderStudyGuide(guide) {
+        const wrap = document.createElement('div');
+        wrap.className = 'mx-auto max-w-3xl';
+        wrap.innerHTML = `
+          <div class="glass ring1 rounded-3xl p-6 md:p-8 shadow-2xl">
+            ${(guide.sections||[]).map(sec => `
+              <div class="mb-6">
+                <h3 class="text-xl font-semibold">${escapeHtml(sec.title)}</h3>
+                <ul class="list-disc pl-6 text-slate-300 mt-2">${(sec.bullets||[]).map(b => `<li class="mt-1">${escapeHtml(b)}</li>`).join('')}</ul>
+              </div>
+            `).join('')}
+            ${guide.key_terms?.length ? `
+              <h3 class="text-xl font-semibold mt-6">Key Terms</h3>
+              <ul class="list-disc pl-6 text-slate-300 mt-2">${guide.key_terms.map(k => `<li class="mt-1"><span class="font-medium">${escapeHtml(k.term)}:</span> ${escapeHtml(k.definition)}</li>`).join('')}</ul>
+            ` : ''}
+          </div>`;
+        output.appendChild(wrap);
+      }
+
+      // ===== OUTLINE =====
+      function renderOutline(out) {
+        const wrap = document.createElement('div');
+        wrap.className = 'mx-auto max-w-3xl';
+        wrap.innerHTML = `
+          <div class="glass ring1 rounded-3xl p-6 md:p-8 shadow-2xl">
+            <h3 class="text-2xl font-semibold">${escapeHtml(out.title)}</h3>
+            <p class="mt-2 text-slate-300"><span class="font-medium">Thesis:</span> ${escapeHtml(out.thesis)}</p>
+            <div class="mt-5 space-y-4">${(out.sections||[]).map(s => `
+              <div>
+                <h4 class="font-semibold">${escapeHtml(s.heading)}</h4>
+                <ul class="list-disc pl-6 text-slate-300 mt-1">${(s.bullets||[]).map(b => `<li class="mt-1">${escapeHtml(b)}</li>`).join('')}</ul>
+              </div>`).join('')}
+            </div>
+          </div>`;
+        output.appendChild(wrap);
+      }
+
+      function escapeHtml(str) {
+        return String(str).replace(/[&<>"]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[s]));
+      }
+    </script>
+  </body>
+</html>
+
