@@ -3,7 +3,10 @@ import os
 from openai import OpenAI
 
 # read from env explicitly (works even if imported from elsewhere)
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = OpenAI(
+    base_url="https://api.respan.ai/api/",
+    api_key=os.getenv("RESPAN_API_KEY"),
+)
 
 SCHEMAS = {
     "flashcards": (
