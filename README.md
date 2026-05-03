@@ -1,67 +1,31 @@
-EduGen — AI Study Builder
+# EduGen — AI Study Builder
 
-EduGen is a sleek web application that transforms any topic into interactive study materials. Simply enter a subject and choose a format — Quiz, Flashcards, Study Guide, or Essay Outline — and EduGen instantly generates structured learning content powered by OpenAI.
+EduGen is a sleek AI-powered web application that transforms any topic into interactive study materials. Simply enter a subject and choose a format — Quiz, Flashcards, Study Guide, or Essay Outline — and EduGen instantly generates structured learning content using OpenAI.
 
-The frontend features a modern, glassmorphism-inspired design with animated interactions, while the backend is built in Flask (Python).
+The backend is built with Flask and integrates Respan as an LLM gateway to route, monitor, and track AI requests. This allows the project to observe prompt behavior, generated outputs, and request activity across different study material formats.
 
-✨ Features
+The frontend features a modern, glassmorphism-inspired design with animated interactions.
 
-🔹 Multiple study formats — Quizzes, Flashcards, Study Guides, and Outlines.
+## ✨ Features
 
-🔹 Interactive quizzes — animated correct/incorrect feedback, keyboard shortcuts (A/B/C/D, arrows, Enter).
+🔹 Multiple study formats — Quizzes, Flashcards, Study Guides, and Essay Outlines.
 
-🔹 Flip-style flashcards — click to reveal answers.
+🔹 OpenAI-powered generation — Creates structured learning content from any user-entered topic.
 
-🔹 Modern UI — gradient background, glassmorphism cards, smooth animations.
+🔹 Respan integration — Routes and monitors LLM requests through Respan for AI observability.
 
-🔹 Secure key management — API keys stored in .env, never in source code.
+🔹 Interactive quizzes — Animated correct/incorrect feedback, keyboard shortcuts (A/B/C/D, arrows, Enter).
 
-🖼️ Preview
+🔹 Flip-style flashcards — Click to reveal answers.
 
+🔹 Modern UI — Gradient background, glassmorphism cards, and smooth animations.
 
-(Replace with your own screenshot from the app)
+🔹 Secure key management — API keys stored in `.env`, never in source code.
 
-🚀 Getting Started
-1. Clone the repo
+## 🚀 Getting Started
+
+### 1. Clone the repo
+
+```bash
 git clone https://github.com/rishabsanjay/EduGen.git
 cd EduGen
-
-2. Create a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-3. Install dependencies
-pip install -r requirements.txt
-
-4. Set up environment variables
-
-Copy the example env file and add your OpenAI API Key:
-
-cp .env.example .env
-
-
-Edit .env to look like:
-
-OPENAI_API_KEY=sk-your-new-key-here
-
-5. Run the app
-python app.py
-
-
-Visit http://127.0.0.1:5000
- in your browser.
-
-📂 Project Structure
-EduGen/
-│── app.py              # Flask backend
-│── generator.py        # OpenAI content generation logic
-│── requirements.txt    # Python dependencies
-│── .env.example        # Example environment variables
-│── templates/
-│    └── index.html     # Frontend (HTML + TailwindCSS + JS)
-
-🛡️ Security
-
-.env is excluded via .gitignore to protect your API keys.
-
-If a key is ever exposed, rotate it immediately in your OpenAI dashboard.
